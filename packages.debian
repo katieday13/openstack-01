@@ -1,1 +1,7 @@
 libvirt-dev
+qemu-kvm
+libvirt-daemon
+libvirt-daemon-system
+bridge-utils
+libosinfo-bin
+virtinst
