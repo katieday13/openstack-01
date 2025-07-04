@@ -4,4 +4,8 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/debian12"
   config.vagrant.plugins = ['vagrant-libvirt']
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.memory = 8192
+    libvirt.cpus = 2
+  end
 end
