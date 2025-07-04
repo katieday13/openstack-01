@@ -10,4 +10,7 @@ Vagrant.configure("2") do |config|
     libvirt.memorybacking :access, :mode => "shared"
   end
   config.vm.synced_folder "./", "/vagrant", type: "virtiofs"
+  config.vm.provision "keystone", type: "ansible_local" do |ansible|
+    ansible.playbook = "keystone.yml"
+  end
 end

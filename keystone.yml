@@ -1,0 +1,88 @@
+---
+- name: Install Keystone and configure
+  hosts: all
+  become: true
+  vars:
+    strong_password: StrongPassw0rd01
+
+  tasks:
+    - name: "Install mariadb"
+      ansible.builtin.apt:
+        name:
+          - mariadb-server
+          - python3-pymysql
+        autoclean: true
+        autoremove: true
+        cache_valid_time: 86400
+        state: present
+    - name: "Configure mariadb connections"
+      ansible.builtin.template:
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        src: templates/50-server.cnf
+        mode: "0644"
+      notify: Restart MariaDB
+
+    - name: Install memcached, rabbitmq-server, nginx, nginx-mod-stream
+      ansible.builtin.apt:
+        name:
+          - memcached
+          - rabbitmq-server
+          - nginx
+          - libnginx-mod-stream
+    - name: Setup rabbitmq user for OpenStack
+      community.rabbitmq.rabbitmq_user:
+        user: openstack
+        password: "{{ strong_password }}"
+        configure_priv: .*
+        read_priv: .*
+        write_priv: .*
+        state: present
+    - name: Disable nginx default site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart nginx
+    - name: Add keystone database
+      community.mysql.mysql_db:
+        name: keystone
+        state: present
+        pipefail: true
+    - name: Add keystone grant
+      community.mysql.mysql_user:
+        name: keystone
+        host: localhost
+        password: "{{ strong_password }}"
+        priv: 'keystone.*:ALL'
+        state: present
+
+    - name: "Install Keystone and OpenStack Client"
+      ansible.builtin.apt:
+        name:
+          - keystone
+          - python3-openstackclient
+          - apache2 # WTF apache2 instead of just use nginx?
+          - python3-oauth2client
+          - libapache2-mod-wsgi-py3
+        autoclean: true
+        autoremove: true
+        cache_valid_time: 86400
+        state: present
+    - name: Write keystone configure
+      ansible.builtin.template:
+        src: templates/keystone.conf.j2
+        dest: /etc/keystone/keystone.conf
+        backup: true
+        mode: "0640"
+  handlers:
+    - name: Restart MariaDB
+      ansible.builtin.systemd_service:
+        state: restarted
+        daemon_reload: true
+        name: mariadb
+    - name: Restart nginx
+      ansible.builtin.systemd_service:
+        state: restarted
+        daemon_reload: true
+        name: nginx
+
+# - name:
